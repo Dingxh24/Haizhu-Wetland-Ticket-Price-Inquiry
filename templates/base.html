@@ -11,16 +11,17 @@
     <div class="app-shell">
         <header class="window-titlebar">
             <div class="titlebar-drag pywebview-drag-region">
-                <div class="app-mark">湿</div>
+                <div class="app-mark">
+                    {% if app_mark_icon_url %}
+                    <img src="{{ app_mark_icon_url }}" alt="图标" class="app-mark-img">
+                    {% else %}
+                    湿
+                    {% endif %}
+                </div>
                 <div class="title-group">
                     <div class="window-title">广州海珠国家湿地公园票价查询</div>
                     <div class="window-subtitle">桌面版票务辅助系统</div>
                 </div>
-            </div>
-            <div class="titlebar-actions no-drag">
-                <button type="button" class="window-btn" id="btnMinimize" title="最小化">—</button>
-                <button type="button" class="window-btn" id="btnMaximize" title="最大化 / 还原">□</button>
-                <button type="button" class="window-btn close" id="btnClose" title="关闭">×</button>
             </div>
         </header>
         <main class="page-area">

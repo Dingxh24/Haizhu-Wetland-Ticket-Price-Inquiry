@@ -1,4 +1,5 @@
 import importlib.util
+import base64
 import os
 import socket
 import sys
@@ -14,6 +15,14 @@ WINDOW_WIDTH = 1140
 WINDOW_HEIGHT = 780
 MIN_WIDTH = 980
 MIN_HEIGHT = 700
+
+
+def resource_path(relative_path: str) -> str:
+    if getattr(sys, 'frozen', False):
+        base_path = sys._MEIPASS  # type: ignore[attr-defined]
+    else:
+        base_path = os.path.abspath(os.path.dirname(__file__))
+    return os.path.join(base_path, relative_path)
 
 
 def has_module(module_name: str) -> bool:
@@ -41,7 +50,7 @@ def wait_for_server(host: str, port: int, timeout: float = 15.0) -> bool:
             with socket.create_connection((host, port), timeout=1):
                 return True
         except OSError:
-            time.sleep(0.2)
+            time.sleep(0.1)
     return False
 
 
@@ -98,7 +107,29 @@ class WindowApi:
         return {'ok': True, 'maximized': self.is_maximized}
 
 
-def build_splash_html() -> str:
+def pick_assets_png_path() -> str:
+    assets_dir = resource_path(os.path.join('assets'))
+    if not os.path.isdir(assets_dir):
+        return ''
+
+    png_files = sorted(
+        file_name for file_name in os.listdir(assets_dir) if file_name.lower().endswith('.png')
+    )
+    if not png_files:
+        return ''
+    return os.path.join(assets_dir, png_files[0])
+
+
+def image_data_url(png_path: str) -> str:
+    if not png_path or not os.path.exists(png_path):
+        return ''
+    with open(png_path, 'rb') as file:
+        image_base64 = base64.b64encode(file.read()).decode('ascii')
+    return f'data:image/png;base64,{image_base64}'
+
+
+def build_splash_html(icon_data_url: str) -> str:
+    icon_html = f"<img src='{icon_data_url}' alt='图标' class='icon-img'>" if icon_data_url else "湿"
     return """<!DOCTYPE html>
 <html lang='zh-CN'>
 <head>
@@ -109,24 +140,24 @@ def build_splash_html() -> str:
 *{box-sizing:border-box} body{margin:0;font-family:'Microsoft YaHei','PingFang SC',Arial,sans-serif;background:radial-gradient(circle at top,#1ea56a,#0f5132 70%);color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}
 .panel{width:min(520px,88vw);background:rgba(255,255,255,.10);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.16);border-radius:28px;padding:28px 30px;box-shadow:0 24px 60px rgba(0,0,0,.18)}
 .brand{display:flex;gap:16px;align-items:center;margin-bottom:18px}.icon{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#dff8ea,#9fe0be);display:flex;align-items:center;justify-content:center;color:#0f5132;font-weight:800;font-size:30px;box-shadow:0 12px 30px rgba(0,0,0,.16)}
+.icon-img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
 .title{font-size:26px;font-weight:800;line-height:1.3;margin:0}.sub{opacity:.9;margin-top:4px}
 .loader{height:12px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden;margin:22px 0 14px}.loader span{display:block;height:100%;width:38%;border-radius:999px;background:linear-gradient(90deg,#e7fff1,#bdf0d0);animation:run 1.6s ease-in-out infinite}
 @keyframes run{0%{transform:translateX(-120%)}50%{transform:translateX(180%)}100%{transform:translateX(320%)}}
-.note{line-height:1.8;opacity:.95;font-size:14px}.tag{display:inline-block;margin-top:10px;padding:8px 12px;border-radius:999px;background:rgba(255,255,255,.14);font-size:13px}
+.note{line-height:1.8;opacity:.95;font-size:14px}
 </style>
 </head>
 <body>
     <div class='panel'>
         <div class='brand'>
-            <div class='icon'>湿</div>
+            <div class='icon'>""" + icon_html + """</div>
             <div>
                 <h1 class='title'>广州海珠国家湿地公园</h1>
                 <div class='sub'>票价查询桌面版正在启动…</div>
             </div>
         </div>
         <div class='loader'><span></span></div>
-        <div class='note'>正在连接本地服务并加载桌面界面，请稍候。<br>窗口启动后将显示原生感标题栏、最小化 / 最大化 / 关闭按钮，以及欢迎页过渡效果。</div>
-        <div class='tag'>Wetland Ticket Desktop</div>
+        <div class='note'>正在连接本地服务并加载桌面界面，请稍候。</div>
     </div>
 </body>
 </html>"""
@@ -140,7 +171,7 @@ def main() -> None:
         )
         sys.exit(1)
 
-    from app import app, resource_path
+    from app import app
 
     server_thread = threading.Thread(
         target=lambda: app.run(
@@ -169,7 +200,8 @@ def main() -> None:
 
     import webview
 
-    icon_png = resource_path(os.path.join('assets', 'app_icon.png'))
+    icon_png = pick_assets_png_path()
+    splash_icon_data_url = image_data_url(icon_png)
     api = WindowApi()
     main_loaded = threading.Event()
 
@@ -197,7 +229,7 @@ def main() -> None:
 
     splash_window = webview.create_window(
         '启动中',
-        html=build_splash_html(),
+        html=build_splash_html(splash_icon_data_url),
         width=640,
         height=420,
         resizable=False,
@@ -209,7 +241,6 @@ def main() -> None:
 
     def after_start():
         main_loaded.wait(timeout=8)
-        time.sleep(0.7)
         try:
             splash_window.destroy()
         except Exception:

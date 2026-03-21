@@ -3,7 +3,7 @@ import sys
 from datetime import date
 from typing import List, Tuple
 
-from flask import Flask, redirect, render_template, request, session, url_for
+from flask import Flask, redirect, render_template, request, send_from_directory, session, url_for
 
 try:
     import chinese_calendar as calendar
@@ -42,6 +42,17 @@ DISCOUNT_OPTIONS = {
     'student_or_height': '因身高或学生身份符合优惠票：1.2米以上且1.5米及以下儿童；或全日制本科及以下学历学生',
     'special_discount': '盲人、智力残疾人、双下肢残疾人、其他重度残疾人，或其1名陪护人员（持有效证件）',
 }
+
+
+def pick_assets_png_name() -> str:
+    assets_dir = resource_path('assets')
+    if not os.path.isdir(assets_dir):
+        return ''
+
+    png_files = sorted(
+        file_name for file_name in os.listdir(assets_dir) if file_name.lower().endswith('.png')
+    )
+    return png_files[0] if png_files else ''
 
 
 def is_target_holiday(check_date: date | None = None) -> bool:
@@ -97,6 +108,18 @@ def calculate_ticket_price(age: int, selected_discount_options: List[str]) -> Tu
 @app.route('/', methods=['GET'])
 def index():
     return render_template('index.html', free_options=FREE_OPTIONS, error='')
+
+
+@app.route('/assets/<path:filename>', methods=['GET'])
+def asset_file(filename: str):
+    return send_from_directory(resource_path('assets'), filename)
+
+
+@app.context_processor
+def inject_asset_icon():
+    app_mark_icon = pick_assets_png_name()
+    app_mark_icon_url = url_for('asset_file', filename=app_mark_icon) if app_mark_icon else ''
+    return {'app_mark_icon_url': app_mark_icon_url}
 
 
 @app.route('/submit-free', methods=['POST'])
