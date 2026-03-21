@@ -1,82 +1,60 @@
 # 广州海珠国家湿地公园票价查询（桌面版）
 
-这是一个基于 **Flask + pywebview** 并有 PyInstaller 打包支持的本地桌面票价查询程序。
-## 1. 功能说明
+基于 **Flask + pywebview** 的桌面票务辅助系统，附带 PyInstaller 打包脚本。它模拟游客在广州海珠国家湿地公园购票的流程：先判断免票条件，再评估年龄/身份优惠，最后自动应用法定节假日的全票折扣，并在窗口中给出可视化的结果提示。
 
-### 第一页：免票判断
+## 核心功能
 
-- 用户先勾选是否符合免票条件。
-- 只要勾选了任意一个免票条件，点击“查询”后直接弹出：**您可以享受免票**。
-- 如果用户选择“以上均不符合”，则进入第二页。
-- “以上均不符合”与其他免票选项互斥。
+- **两段式判断**：第一页勾选免票情形，满足任一条即弹出“您可以享受免票”；否则跳转到第二页再输入年龄、补充优惠条件。
+- **年龄/条件优惠规则**：系统自动判定免票（≤6、≥65）和优惠票（7~18、60~64、身高/学生、重度残疾人或陪护），其余全票 20 元。
+- **节假日折扣**：通过 `chinese_calendar` 识别五一、国庆、春节；若全票且在假期，自动降为 16 元（8 折），仅作用于全票，不与优惠票叠加。
+- **容错性**：年龄表单检查空值、非整数、超过合理范围（0~120）。若未安装 `pywebview`，桌面启动器会退回浏览器模式；若缺少 `chinese_calendar`，节假日折扣保持关闭但不报错。
 
-### 第二页：年龄 + 优惠票判断
-
-- 用户输入年龄。
-- 可额外勾选优惠票条件，也可以不勾选。
-- 系统根据年龄和优惠条件自动判断：
-  - 6周岁及以下：免票
-  - 65周岁及以上：免票
-  - 6周岁以上至18周岁（含18周岁）：优惠票 10 元
-  - 60至64周岁（含64周岁）：优惠票 10 元
-  - 其他符合补充优惠条件者：优惠票 10 元
-  - 其余情况：全票 20 元
-
-### 节假日自动折扣
-
-- 在 **五一 / 国庆 / 春节** 假期内：
-  - 若用户应购买全票，则自动按 **8 折** 显示 **16 元**。
-- 该折扣只作用于全票，不与优惠票叠加。
-
-## 2. 项目结构
+## 目录结构
 
 ```text
 wetland_ticket_app/
-├─ app.py                         # Flask 主程序
-├─ launcher.py                    # 桌面窗口启动器（优先 pywebview）
-├─ requirements.txt               # 运行依赖
-├─ requirements-packaging.txt     # 打包依赖
-├─ wetland_ticket_desktop.spec    # PyInstaller 打包配置
+├─ app.py                         # Flask 后端逻辑
+├─ launcher.py                    # 主桌面入口（优先 pywebview）
+├─ requirements.txt               # 运行依赖（Flask、pywebview、chinese_calendar 等）
+├─ requirements-packaging.txt     # 打包依赖（PyInstaller、图标库等）
+├─ wetland_ticket_desktop.spec    # PyInstaller 打包定义
 ├─ build_windows.bat              # Windows 一键打包脚本
 ├─ build_macos_linux.sh           # macOS / Linux 打包脚本
 ├─ assets/
-│  ├─ app_icon.png                # 桌面窗口图标
-│  └─ app_icon.ico                # Windows 打包图标
+│  ├─ app_icon.png                # 供窗口徽标用的图标（自动注入）
+│  └─ app_icon.ico                # Windows 打包用 ICO
 ├─ templates/
-│  ├─ index.html                  # 免票页
-│  ├─ discount.html               # 优惠票页
+│  ├─ base.html                   # 公共布局（含标题栏、窗口按钮）
+│  ├─ index.html                  # 免票判断页
+│  ├─ discount.html               # 折扣判断页
 │  └─ result.html                 # 结果弹窗页
 └─ static/
-   └─ style.css                   # 页面样式
+   ├─ desktop.js                  # 桌面交互（拖拽、窗口按钮）
+   └─ style.css                   # 公共样式
 ```
 
-## 3. 如何运行
+## 运行方式
 
-### 方式 A：直接运行桌面版
+### 桌面版（推荐）
 
 ```bash
 python -m pip install -r requirements.txt
 python launcher.py
 ```
 
-运行后：
+- 如系统安装了 `pywebview` 且支持的后端（默认优先 Qt），程序会以内嵌窗口的形式启动；
+- 若 `pywebview` 不可用或运行失败，则自动回退至浏览器模式并提示用户；
+- `launcher.py` 会把 Flask 应用绑定到 `127.0.0.1:5000` 并打开桌面窗口，保持原生交互体验。
 
-- 如果已安装 `pywebview`，程序会以 **桌面窗口** 打开；
-- 如果未安装 `pywebview`，程序会自动退回浏览器模式。
-
-### 方式 B：只运行网页版
+### 浏览器版（可选）
 
 ```bash
 python app.py
 ```
 
-然后访问：
+访问 `http://127.0.0.1:5000/` 即可体验完整流程；此方式适用于不愿额外安装 `pywebview` 的环境。
 
-```text
-http://127.0.0.1:5000/
-```
-
-## 4. 如何打包为 exe
+## 打包为可执行文件
 
 ### Windows
 
@@ -85,17 +63,7 @@ python -m pip install -r requirements-packaging.txt
 pyinstaller --clean wetland_ticket_desktop.spec
 ```
 
-生成文件位于：
-
-```text
-dist/WetlandTicketDesktop.exe
-```
-
-也可以直接双击：
-
-```text
-build_windows.bat
-```
+或直接运行 `build_windows.bat`，输出 `dist/WetlandTicketDesktop.exe`，其中包含窗口图标、PyInstaller 运行时等。
 
 ### macOS / Linux
 
@@ -104,23 +72,24 @@ python3 -m pip install -r requirements-packaging.txt
 pyinstaller --clean wetland_ticket_desktop.spec
 ```
 
-或直接执行：
+或执行 `bash build_macos_linux.sh`，生成跨平台的可执行应用。
 
-```bash
-bash build_macos_linux.sh
-```
-## 6. Python 兼容范围
-- 目标兼容：Python 3.7 - 3.14；
-- 已通过依赖分流与运行时参数兼容处理，自动适配不同版本 pywebview 的 API 差异。
-- Windows + Python 3.14 默认优先尝试 Qt 后端（如 `PySide6`）。若不可用，会自动降级为浏览器模式，不会崩溃退出。
-- 如果遇到Python版本不兼容问题，可以通过安装并使用Python3.10或3.11解决
+## 技术说明
 
-## 5. 项目来源说明
+- `app.py` 通过 `session` 在免票页与优惠页之间传递状态，避免用户绕过逻辑；
+- `calculate_ticket_price` 封装了所有票价规则并返回价格、提示语、原因，方便 `result.html` 界面显示；
+- 当 `chinese_calendar` 缺失时，`is_target_holiday` 总是返回 `False`，系统仍然可以正常运行；
+- 页面静态资源位于 `static/`，桌面交互脚本负责按钮、拖拽等行为。
 
-本项目在设计与开发过程中，使用了包括Chat-GPT 5.4，Codex5.1 mini Codex5.3等 AI 工具辅助编程。
+## Python 兼容性
 
+- 目标兼容 Python 3.7~3.14；
+- 针对不同 pywebview 版本自动调整后端（Windows 上 Python 3.14 默认优先 Qt，若不可用则降级浏览器窗口）；
+- 若遇兼容问题，可切换至 Python 3.10/3.11 作为兼容版本。
 
-## 6. 声明
+## 开发与贡献说明
 
-本项目仅用于学习与课程设计，不涉及商业用途。
+- 项目借助 ChatGPT 5.4、Codex 5.3、Codex 5.1 mini 等 AI 工具辅助编程；
+- 仅用于学习与课程设计，不涉及商业用途；
+- 欢迎在本地环境中充分测试！
 

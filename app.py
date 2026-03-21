@@ -46,13 +46,9 @@ DISCOUNT_OPTIONS = {
 
 def pick_assets_png_name() -> str:
     assets_dir = resource_path('assets')
-    if not os.path.isdir(assets_dir):
-        return ''
-
-    png_files = sorted(
-        file_name for file_name in os.listdir(assets_dir) if file_name.lower().endswith('.png')
-    )
-    return png_files[0] if png_files else ''
+    icon_name = 'Haizhu_Wetland_app_icon.png'
+    icon_path = os.path.join(assets_dir, icon_name)
+    return icon_name if os.path.isfile(icon_path) else ''
 
 
 def is_target_holiday(check_date: Optional[date] = None) -> bool:
