@@ -1,5 +1,6 @@
 import importlib.util
 import base64
+import inspect
 import os
 import socket
 import sys
@@ -58,6 +59,11 @@ def open_browser() -> None:
     webbrowser.open(URL)
 
 
+def should_prefer_qt_backend() -> bool:
+    # On Windows + Python 3.14+, winforms backend may fail due pythonnet ABI gaps.
+    return sys.platform.startswith('win') and sys.version_info >= (3, 14)
+
+
 class WindowApi:
     """
     暴露给前端 JavaScript 的窗口控制 API。
@@ -77,8 +83,15 @@ class WindowApi:
         def _on_restored(*_args):
             self._is_maximized = False
 
-        window.events.maximized += _on_maximized
-        window.events.restored += _on_restored
+        # Older pywebview versions may not expose these events.
+        try:
+            if hasattr(window, 'events'):
+                if hasattr(window.events, 'maximized'):
+                    window.events.maximized += _on_maximized
+                if hasattr(window.events, 'restored'):
+                    window.events.restored += _on_restored
+        except Exception:
+            pass
 
     def minimize_window(self):
         if self._main_window is not None:
@@ -109,6 +122,24 @@ class WindowApi:
 
 class SplashApi:
     """占位：已不再使用独立启动窗。"""
+
+
+def filter_supported_kwargs(func, kwargs):
+    """
+    Filter kwargs by callable signature to keep compatibility with
+    multiple pywebview versions (3.7-3.14 runtime targets).
+    """
+    try:
+        signature = inspect.signature(func)
+    except (TypeError, ValueError):
+        return kwargs
+
+    params = signature.parameters
+    for value in params.values():
+        if value.kind == inspect.Parameter.VAR_KEYWORD:
+            return kwargs
+
+    return {key: value for key, value in kwargs.items() if key in params}
 
 
 def pick_assets_png_path() -> str:
@@ -224,23 +255,26 @@ def main() -> None:
     import webview
 
     icon_png = pick_assets_png_path()
-    splash_icon_data_url = image_data_url(icon_png)
     api = WindowApi()
+
+    create_window_kwargs = {
+        'js_api': api,
+        'width': WINDOW_WIDTH,
+        'height': WINDOW_HEIGHT,
+        'min_size': (MIN_WIDTH, MIN_HEIGHT),
+        'resizable': True,
+        'confirm_close': False,
+        'frameless': True,
+        'easy_drag': False,
+        'hidden': False,
+        'shadow': True,
+        'background_color': '#EDF7F1',
+    }
 
     main_window = webview.create_window(
         APP_TITLE,
         URL,
-        js_api=api,
-        width=WINDOW_WIDTH,
-        height=WINDOW_HEIGHT,
-        min_size=(MIN_WIDTH, MIN_HEIGHT),
-        resizable=True,
-        confirm_close=False,
-        frameless=True,
-        easy_drag=False,
-        hidden=False,
-        shadow=True,
-        background_color='#EDF7F1',
+        **filter_supported_kwargs(webview.create_window, create_window_kwargs),
     )
     api.bind_window(main_window)
 
@@ -248,7 +282,21 @@ def main() -> None:
     if os.path.exists(icon_png):
         start_kwargs['icon'] = icon_png
 
-    webview.start(**start_kwargs)
+    if should_prefer_qt_backend():
+        start_kwargs['gui'] = 'qt'
+
+    try:
+        webview.start(**filter_supported_kwargs(webview.start, start_kwargs))
+    except Exception as exc:
+        show_message(
+            '已切换为浏览器模式',
+            '桌面窗口模式启动失败，程序将使用默认浏览器打开。\n'
+            '若需桌面窗口，请安装 Qt 后端（示例：python -m pip install PySide6），'
+            '或使用 Python 3.13 及以下版本。\n\n'
+            f'错误信息：{exc}',
+        )
+        threading.Thread(target=open_browser, daemon=True).start()
+        server_thread.join()
 
 
 if __name__ == '__main__':

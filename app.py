@@ -1,7 +1,7 @@
 import os
 import sys
 from datetime import date
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 from flask import Flask, redirect, render_template, request, send_from_directory, session, url_for
 
@@ -55,7 +55,7 @@ def pick_assets_png_name() -> str:
     return png_files[0] if png_files else ''
 
 
-def is_target_holiday(check_date: date | None = None) -> bool:
+def is_target_holiday(check_date: Optional[date] = None) -> bool:
     """
     判断当天是否属于“五一 / 国庆 / 春节”法定假期。
     返回 True 时，单次购买全票按 8 折，即 16 元。
