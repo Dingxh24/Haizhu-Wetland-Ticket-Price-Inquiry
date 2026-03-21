@@ -1,7 +1,6 @@
 # 广州海珠国家湿地公园票价查询（桌面版）
 
-这是一个基于 **Flask + pywebview** 的本地桌面票价查询程序。
-有 PyInstaller 打包支持。
+这是一个基于 **Flask + pywebview** 并有 PyInstaller 打包支持的本地桌面票价查询程序。
 ## 1. 功能说明
 
 ### 第一页：免票判断
