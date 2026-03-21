@@ -113,6 +113,7 @@ bash build_macos_linux.sh
 - 目标兼容：Python 3.7 - 3.14；
 - 已通过依赖分流与运行时参数兼容处理，自动适配不同版本 pywebview 的 API 差异。
 - Windows + Python 3.14 默认优先尝试 Qt 后端（如 `PySide6`）。若不可用，会自动降级为浏览器模式，不会崩溃退出。
+- 如果遇到Python版本不兼容问题，可以通过安装并使用Python3.10或3.11解决
 
 ## 5. 项目来源说明
 
