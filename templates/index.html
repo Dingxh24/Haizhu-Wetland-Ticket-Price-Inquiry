@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block title %}免票查询{% endblock %}
+{% block content %}
+<div class="container">
+    <div class="hero-card">
+        <div>
+            <h1>欢迎使用票价查询系统</h1>
+            <p class="hero-text">先判断是否符合免票条件。若勾选任一免票条件，点击查询后会直接显示“您可以享受免票”；若均不符合，请选择“以上均不符合”继续下一步。</p>
+        </div>
+        <div class="hero-badge">桌面版</div>
+    </div>
+
+    <h2>第一步：请选择是否符合免票条件</h2>
+
+    <div class="card note-card">
+        <p>说明：</p>
+        <ul>
+            <li>本页只处理“免票”判断。</li>
+            <li>如果你勾选了任何一个免票条件，点击“查询”后会直接提示“您可以享受免票”。</li>
+            <li>如果以上免票条件都不符合，请勾选“以上均不符合”，系统会进入下一页继续判断优惠票或全票。</li>
+        </ul>
+    </div>
+
+    {% if error %}
+    <div class="error-box">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="{{ url_for('submit_free') }}" id="freeForm">
+        <div class="card">
+            {% for key, label in free_options.items() %}
+            <label class="option-item {% if key == 'none' %}none-option{% endif %}">
+                <input type="checkbox" name="free_options" value="{{ key }}" class="free-checkbox">
+                <span>{{ label }}</span>
+            </label>
+            {% endfor %}
+        </div>
+
+        <div class="button-row">
+            <button type="submit" class="btn-primary">查询</button>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const checkboxes = document.querySelectorAll('.free-checkbox');
+    const noneCheckbox = document.querySelector('input[value="none"]');
+    checkboxes.forEach(box => {
+        box.addEventListener('change', function () {
+            if (this.value === 'none' && this.checked) {
+                checkboxes.forEach(other => {
+                    if (other.value !== 'none') {
+                        other.checked = false;
+                    }
+                });
+            }
+            if (this.value !== 'none' && this.checked) {
+                noneCheckbox.checked = false;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

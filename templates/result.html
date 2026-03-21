@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block title %}查询结果{% endblock %}
+{% block content %}
+<div class="result-overlay show" id="resultModal">
+    <div class="result-dialog">
+        <div class="result-dialog-header">
+            <div>
+                <h1>查询结果</h1>
+                <p class="result-caption">系统已完成票价判定</p>
+            </div>
+            <span class="result-badge">票价提示</span>
+        </div>
+        <p class="result-text">{{ message }}</p>
+        {% if reason %}
+        <div class="reason-box">
+            <div class="reason-title">判定依据</div>
+            <div class="reason-body">{{ reason }}</div>
+        </div>
+        {% endif %}
+        <div class="button-row center">
+            <a href="{{ url_for('index') }}" class="btn-primary">继续查询</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
