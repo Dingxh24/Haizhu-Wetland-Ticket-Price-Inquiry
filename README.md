@@ -109,4 +109,12 @@ pyinstaller --clean wetland_ticket_desktop.spec
 ```bash
 bash build_macos_linux.sh
 ```
-## 5. 
+## 5. 项目来源说明
+
+本项目在设计与开发过程中，使用了 AI 进行辅助编程与代码生成。
+
+
+## 6. 声明
+
+本项目仅用于学习与课程设计，不涉及商业用途。
+
