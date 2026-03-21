@@ -109,9 +109,14 @@ pyinstaller --clean wetland_ticket_desktop.spec
 ```bash
 bash build_macos_linux.sh
 ```
+## 6. Python 兼容范围
+- 目标兼容：Python 3.7 - 3.14；
+- 已通过依赖分流与运行时参数兼容处理，自动适配不同版本 pywebview 的 API 差异。
+- Windows + Python 3.14 默认优先尝试 Qt 后端（如 `PySide6`）。若不可用，会自动降级为浏览器模式，不会崩溃退出。
+
 ## 5. 项目来源说明
 
-本项目在设计与开发过程中，使用了 AI 进行辅助编程与代码生成。
+本项目在设计与开发过程中，使用了包括Chat-GPT 5.4，Codex5.1 mini Codex5.3等 AI 工具辅助编程。
 
 
 ## 6. 声明
