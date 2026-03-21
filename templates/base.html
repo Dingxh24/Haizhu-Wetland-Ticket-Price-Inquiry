@@ -23,6 +23,11 @@
                     <div class="window-subtitle">桌面版票务辅助系统</div>
                 </div>
             </div>
+            <div class="titlebar-actions">
+                <button type="button" class="window-btn minimize" id="btnMinimize" aria-label="最小化"></button>
+                <button type="button" class="window-btn maximize" id="btnMaximize" aria-label="最大化"></button>
+                <button type="button" class="window-btn close" id="btnClose" aria-label="关闭"></button>
+            </div>
         </header>
         <main class="page-area">
             {% block content %}{% endblock %}

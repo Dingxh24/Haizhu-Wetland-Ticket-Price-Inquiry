@@ -27,7 +27,8 @@
                 event.preventDefault();
                 const result = await callApi('toggle_maximize');
                 if (result && typeof result.maximized !== 'undefined') {
-                    btnMax.textContent = result.maximized ? '❐' : '□';
+                    btnMax.classList.toggle('restore', result.maximized);
+                    btnMax.classList.toggle('maximize', !result.maximized);
                 }
             });
         }

@@ -39,13 +39,21 @@ body {
 }
 .window-title { font-size: 18px; font-weight: 800; color: #0f5132; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .window-subtitle { font-size: 12px; color: #6a7886; margin-top: 3px; }
-.titlebar-actions { display: flex; align-items: stretch; height: 100%; }
+.titlebar-actions { display: flex; align-items: center; height: 100%; gap: 6px; padding-right: 8px; }
 .window-btn {
-    width: 54px; border: none; outline: none; background: transparent; color: #2b3440; font-size: 20px; cursor: pointer;
-    transition: background .18s ease, color .18s ease;
+    width: 46px; height: 46px; border: none; outline: none; background: rgba(0,0,0,0); cursor: pointer;
+    transition: background-color .16s ease, transform .12s ease, filter .12s ease;
+    border-radius: 12px;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 18px;
 }
-.window-btn:hover { background: rgba(25, 135, 84, 0.10); color: var(--primary-dark); }
-.window-btn.close:hover { background: #e03131; color: #fff; }
+.window-btn.minimize { background-image: url('/static/icon-min.svg'); }
+.window-btn.maximize { background-image: url('/static/icon-max.svg'); }
+.window-btn.restore { background-image: url('/static/icon-restore.svg'); }
+.window-btn.close { background-image: url('/static/icon-close.svg'); }
+.window-btn:hover { background-color: rgba(25, 135, 84, 0.12); transform: scale(1.03); }
+.window-btn.close:hover { background-color: #d93636; }
 .page-area { flex: 1; overflow: auto; }
 .container { width: min(940px, 92%); margin: 26px auto 34px; }
 .hero-card {

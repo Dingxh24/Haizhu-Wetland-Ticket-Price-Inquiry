@@ -43,14 +43,14 @@ def show_message(title: str, message: str) -> None:
         print(f'[{title}] {message}')
 
 
-def wait_for_server(host: str, port: int, timeout: float = 15.0) -> bool:
+def wait_for_server(host: str, port: int, timeout: float = 6.0) -> bool:
     start_time = time.time()
     while time.time() - start_time < timeout:
         try:
             with socket.create_connection((host, port), timeout=1):
                 return True
         except OSError:
-            time.sleep(0.1)
+            time.sleep(0.05)
     return False
 
 
@@ -65,46 +65,50 @@ class WindowApi:
     """
 
     def __init__(self):
-        self.main_window = None
-        self.is_maximized = False
+        self._main_window = None
+        self._is_maximized = False
 
     def bind_window(self, window):
-        self.main_window = window
+        self._main_window = window
 
         def _on_maximized(*_args):
-            self.is_maximized = True
+            self._is_maximized = True
 
         def _on_restored(*_args):
-            self.is_maximized = False
+            self._is_maximized = False
 
         window.events.maximized += _on_maximized
         window.events.restored += _on_restored
 
     def minimize_window(self):
-        if self.main_window is not None:
-            self.main_window.minimize()
+        if self._main_window is not None:
+            self._main_window.minimize()
         return {'ok': True}
 
     def toggle_maximize(self):
-        if self.main_window is None:
+        if self._main_window is None:
             return {'ok': False}
 
-        if self.is_maximized:
-            self.main_window.restore()
-            self.is_maximized = False
+        if self._is_maximized:
+            self._main_window.restore()
+            self._is_maximized = False
             return {'ok': True, 'maximized': False}
 
-        self.main_window.maximize()
-        self.is_maximized = True
+        self._main_window.maximize()
+        self._is_maximized = True
         return {'ok': True, 'maximized': True}
 
     def close_window(self):
-        if self.main_window is not None:
-            self.main_window.destroy()
+        if self._main_window is not None:
+            self._main_window.destroy()
         return {'ok': True}
 
     def get_window_state(self):
-        return {'ok': True, 'maximized': self.is_maximized}
+        return {'ok': True, 'maximized': self._is_maximized}
+
+
+class SplashApi:
+    """占位：已不再使用独立启动窗。"""
 
 
 def pick_assets_png_path() -> str:
@@ -138,7 +142,11 @@ def build_splash_html(icon_data_url: str) -> str:
 <title>启动中</title>
 <style>
 *{box-sizing:border-box} body{margin:0;font-family:'Microsoft YaHei','PingFang SC',Arial,sans-serif;background:radial-gradient(circle at top,#1ea56a,#0f5132 70%);color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;overflow:hidden}
-.panel{width:min(520px,88vw);background:rgba(255,255,255,.10);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.16);border-radius:28px;padding:28px 30px;box-shadow:0 24px 60px rgba(0,0,0,.18)}
+.panel{position:relative;width:min(520px,88vw);background:rgba(255,255,255,.10);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,.16);border-radius:28px;padding:28px 30px;box-shadow:0 24px 60px rgba(0,0,0,.18)}
+.controls{position:absolute;top:14px;right:14px;display:flex;gap:10px}
+.ctrl-btn{width:40px;height:40px;border:none;border-radius:12px;background:rgba(255,255,255,.18);color:#0f5132;font-size:18px;font-weight:700;cursor:pointer;transition:background .18s ease,color .18s ease}
+.ctrl-btn:hover{background:rgba(255,255,255,.28)}
+.ctrl-btn.close:hover{background:#e03131;color:#fff}
 .brand{display:flex;gap:16px;align-items:center;margin-bottom:18px}.icon{width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,#dff8ea,#9fe0be);display:flex;align-items:center;justify-content:center;color:#0f5132;font-weight:800;font-size:30px;box-shadow:0 12px 30px rgba(0,0,0,.16)}
 .icon-img{width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}
 .title{font-size:26px;font-weight:800;line-height:1.3;margin:0}.sub{opacity:.9;margin-top:4px}
@@ -149,6 +157,10 @@ def build_splash_html(icon_data_url: str) -> str:
 </head>
 <body>
     <div class='panel'>
+        <div class='controls'>
+            <button class='ctrl-btn' id='btnSplashMin'>—</button>
+            <button class='ctrl-btn close' id='btnSplashClose'>×</button>
+        </div>
         <div class='brand'>
             <div class='icon'>""" + icon_html + """</div>
             <div>
@@ -159,6 +171,17 @@ def build_splash_html(icon_data_url: str) -> str:
         <div class='loader'><span></span></div>
         <div class='note'>正在连接本地服务并加载桌面界面，请稍候。</div>
     </div>
+<script>
+function bindSplashControls(){
+  const minBtn=document.getElementById('btnSplashMin');
+  const closeBtn=document.getElementById('btnSplashClose');
+  const callApi=(name)=>{ if(window.pywebview?.api?.[name]) window.pywebview.api[name](); };
+  if(minBtn){ minBtn.onclick=(e)=>{e.preventDefault();callApi('minimize_window');}; }
+  if(closeBtn){ closeBtn.onclick=(e)=>{e.preventDefault();callApi('close_window');}; }
+}
+document.addEventListener('DOMContentLoaded', bindSplashControls);
+window.addEventListener('pywebviewready', bindSplashControls);
+</script>
 </body>
 </html>"""
 
@@ -203,7 +226,6 @@ def main() -> None:
     icon_png = pick_assets_png_path()
     splash_icon_data_url = image_data_url(icon_png)
     api = WindowApi()
-    main_loaded = threading.Event()
 
     main_window = webview.create_window(
         APP_TITLE,
@@ -216,42 +238,17 @@ def main() -> None:
         confirm_close=False,
         frameless=True,
         easy_drag=False,
-        hidden=True,
+        hidden=False,
         shadow=True,
         background_color='#EDF7F1',
     )
     api.bind_window(main_window)
 
-    def on_loaded(*_args):
-        main_loaded.set()
-
-    main_window.events.loaded += on_loaded
-
-    splash_window = webview.create_window(
-        '启动中',
-        html=build_splash_html(splash_icon_data_url),
-        width=640,
-        height=420,
-        resizable=False,
-        frameless=True,
-        easy_drag=True,
-        on_top=True,
-        background_color='#0F5132',
-    )
-
-    def after_start():
-        main_loaded.wait(timeout=8)
-        try:
-            splash_window.destroy()
-        except Exception:
-            pass
-        main_window.show()
-
     start_kwargs = {}
     if os.path.exists(icon_png):
         start_kwargs['icon'] = icon_png
 
-    webview.start(after_start, **start_kwargs)
+    webview.start(**start_kwargs)
 
 
 if __name__ == '__main__':
