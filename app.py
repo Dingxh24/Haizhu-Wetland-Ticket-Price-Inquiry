@@ -8,7 +8,7 @@ from flask import Flask, redirect, render_template, request, send_from_directory
 try:
     import chinese_calendar as calendar
 except ImportError:
-    calendar = None
+    calendar = None  # 未安装依赖时走本地静态节假日表作为兜底
 
 
 def resource_path(relative_path: str) -> str:
@@ -60,11 +60,43 @@ def is_target_holiday(check_date: Optional[date] = None) -> bool:
     if check_date is None:
         check_date = date.today()
 
-    if calendar is None:
-        return False
+    # 优先使用 chinese_calendar（如可用）
+    if calendar is not None:
+        on_holiday, holiday_name = calendar.get_holiday_detail(check_date)
+        if on_holiday and holiday_name in {'劳动节', '国庆节', '春节'}:
+            return True
 
-    on_holiday, holiday_name = calendar.get_holiday_detail(check_date)
-    return on_holiday and holiday_name in {'劳动节', '国庆节', '春节'}
+    # 兜底：若未安装 chinese_calendar，则使用静态节假日表（覆盖近几年）
+    fallback_ranges = {
+        # 劳动节
+        'labor': [
+            (date(2024, 5, 1), date(2024, 5, 5)),
+            (date(2025, 5, 1), date(2025, 5, 5)),
+            (date(2026, 5, 1), date(2026, 5, 5)),
+            (date(2027, 5, 1), date(2027, 5, 5)),
+        ],
+        # 国庆节
+        'national': [
+            (date(2024, 10, 1), date(2024, 10, 7)),
+            (date(2025, 10, 1), date(2025, 10, 7)),
+            (date(2026, 10, 1), date(2026, 10, 7)),
+            (date(2027, 10, 1), date(2027, 10, 7)),
+        ],
+        # 春节（农历，需要静态列出）
+        'spring_festival': [
+            (date(2024, 2, 10), date(2024, 2, 17)),
+            (date(2025, 1, 29), date(2025, 2, 4)),
+            (date(2026, 2, 17), date(2026, 2, 23)),
+            (date(2027, 2, 6), date(2027, 2, 12)),
+        ],
+    }
+
+    for ranges in fallback_ranges.values():
+        for start, end in ranges:
+            if start <= check_date <= end:
+                return True
+
+    return False
 
 
 def calculate_ticket_price(age: int, selected_discount_options: List[str]) -> Tuple[int, str, str]:
