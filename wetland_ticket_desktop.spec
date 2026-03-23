@@ -47,5 +47,6 @@ exe = EXE(
     upx_exclude=[],
     runtime_tmpdir=None,
     console=False,
-    icon=str(project_dir / 'assets' / 'app_icon.ico'),
+    # Use the actual icon file name present in assets/.
+    icon=str(project_dir / 'assets' / 'Haizhu_Wetland_app_icon.ico'),
 )
