@@ -243,60 +243,69 @@ def main() -> None:
         show_message('启动失败', '本地服务启动超时，请关闭后重试。')
         sys.exit(1)
 
-    if not has_module('webview'):
-        show_message(
-            '已切换为浏览器模式',
-            '未检测到 pywebview，程序将使用默认浏览器打开。\n如需桌面窗口模式，请先执行：\npython -m pip install pywebview',
-        )
-        threading.Thread(target=open_browser, daemon=True).start()
-        server_thread.join()
-        return
-
-    import webview
-
-    icon_png = pick_assets_png_path()
-    api = WindowApi()
-
-    create_window_kwargs = {
-        'js_api': api,
-        'width': WINDOW_WIDTH,
-        'height': WINDOW_HEIGHT,
-        'min_size': (MIN_WIDTH, MIN_HEIGHT),
-        'resizable': True,
-        'confirm_close': False,
-        'frameless': True,
-        'easy_drag': False,
-        'hidden': False,
-        'shadow': True,
-        'background_color': '#EDF7F1',
-    }
-
-    main_window = webview.create_window(
-        APP_TITLE,
-        URL,
-        **filter_supported_kwargs(webview.create_window, create_window_kwargs),
-    )
-    api.bind_window(main_window)
-
-    start_kwargs = {}
-    if os.path.exists(icon_png):
-        start_kwargs['icon'] = icon_png
-
-    if should_prefer_qt_backend():
-        start_kwargs['gui'] = 'qt'
-
+    # Prefer桌面模式；如果初始化失败则回退到浏览器模式，避免 WinForms/Edge 控件抛出的未处理异常弹窗。
     try:
-        webview.start(**filter_supported_kwargs(webview.start, start_kwargs))
+        if not has_module('webview'):
+            raise ImportError('pywebview not installed')
+
+        import webview
+
+        # 显式声明优先使用 Edge WebView2；若缺失或初始化失败，后续 except 会捕获并回退。
+        webview_start_kwargs = {'gui': 'edgechromium'}
+
+        icon_png = pick_assets_png_path()
+        api = WindowApi()
+
+        create_window_kwargs = {
+            'js_api': api,
+            'width': WINDOW_WIDTH,
+            'height': WINDOW_HEIGHT,
+            'min_size': (MIN_WIDTH, MIN_HEIGHT),
+            'resizable': True,
+            'confirm_close': False,
+            'frameless': True,
+            'easy_drag': False,
+            'hidden': False,
+            'shadow': True,
+            'background_color': '#EDF7F1',
+        }
+
+        main_window = webview.create_window(
+            APP_TITLE,
+            URL,
+            **filter_supported_kwargs(webview.create_window, create_window_kwargs),
+        )
+        api.bind_window(main_window)
+
+        # Fast-exit on close to避免 WinForms 触发的未处理异常弹窗。
+        try:
+            if hasattr(main_window, 'events'):
+                if hasattr(main_window.events, 'closing'):
+                    main_window.events.closing += lambda *_args, **_kw: os._exit(0)
+                elif hasattr(main_window.events, 'closed'):
+                    main_window.events.closed += lambda *_args, **_kw: os._exit(0)
+        except Exception:
+            pass
+
+        if os.path.exists(icon_png):
+            webview_start_kwargs['icon'] = icon_png
+
+        if should_prefer_qt_backend():
+            webview_start_kwargs['gui'] = 'qt'
+
+        webview.start(**filter_supported_kwargs(webview.start, webview_start_kwargs))
     except Exception as exc:
         show_message(
             '已切换为浏览器模式',
-            '桌面窗口模式启动失败，程序将使用默认浏览器打开。\n'
-            '若需桌面窗口，请安装 Qt 后端（示例：python -m pip install PySide6），'
-            '或使用 Python 3.13 及以下版本。\n\n'
+            '桌面窗口模式启动失败或已禁用，程序将使用默认浏览器打开。\n'
+            '若需桌面窗口，请安装 Microsoft Edge WebView2 运行时，'
+            '或安装 Qt 后端（示例：python -m pip install PySide6）。\n\n'
             f'错误信息：{exc}',
         )
         threading.Thread(target=open_browser, daemon=True).start()
         server_thread.join()
+        # 确保不再继续执行桌面事件循环，避免 WinForms 异常弹窗。
+        os._exit(0)
 
 
 if __name__ == '__main__':
